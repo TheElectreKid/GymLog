@@ -4,6 +4,7 @@ import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
 import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function Settings() {
   const { colors, theme, toggleTheme } = useTheme()
@@ -24,7 +25,11 @@ const exportBackup = async () => {
 const importBackup = async () => {
   try {
     const result = await DocumentPicker.getDocumentAsync({ type: 'application/json' })
-    if (result.canceled) return
+    console.log('picker result:', JSON.stringify(result))
+    if (result.canceled) {
+      console.log('user canceled')
+      return
+    }
     const content = await FileSystem.readAsStringAsync(result.assets[0].uri)
     const parsed = JSON.parse(content)
     if (!Array.isArray(parsed)) {
@@ -34,11 +39,13 @@ const importBackup = async () => {
     await AsyncStorage.setItem('members', JSON.stringify(parsed))
     Alert.alert('Success', 'Backup imported successfully')
   } catch (error) {
-    Alert.alert('Error', 'Failed to import backup')
+    console.log('import error:', JSON.stringify(error))
+    Alert.alert('Error', String(error))
   }
 }
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
       </View>
@@ -76,7 +83,7 @@ const importBackup = async () => {
         </View>
       </View>
 
-    </View>
+    </SafeAreaView>
   )
 }
 

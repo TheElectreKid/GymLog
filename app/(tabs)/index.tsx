@@ -2,8 +2,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol'
 import { useTheme } from '@/context/ThemeContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { useEffect, useState } from 'react'
+import { useFocusEffect } from 'expo-router'
+import { useCallback, useState } from 'react'
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 //Types 
 type Member = {
@@ -18,10 +20,11 @@ type Member = {
 export default function MembersScreen() {
 
   const {colors} = useTheme()
+  const insets = useSafeAreaInsets()
   const [showAddDatePicker, setShowAddDatePicker] = useState(false)
   const [showEditDatePicker, setShowEditDatePicker] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const styles = makeStyles(colors)
+  const styles = makeStyles(colors, insets.bottom)
 
 
 //======
@@ -36,7 +39,11 @@ export default function MembersScreen() {
   const [members, setMembers] = useState<Member[]>([])
 
 
-  useEffect(() => {loadMembers()},  [])
+  useFocusEffect(
+  useCallback(() => {
+    loadMembers()
+  }, [])
+)
 
 //======
 //For Edit Modal
@@ -143,7 +150,7 @@ const deleteMember = (id: string) => {
 
 //================================================================================
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>GymLog</Text>
         <Text style={styles.subtitle}>Member management</Text>
@@ -352,13 +359,13 @@ const deleteMember = (id: string) => {
         </View>
       </KeyboardAvoidingView>
     </Modal>
-    </View>
+    </SafeAreaView>
   )
 }
 
 
 //================================================================================
-const makeStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { padding: 20, paddingTop: 60, borderBottomWidth: 0.5, borderBottomColor: colors.border },
   title: { fontSize: 22, fontWeight: '500', color: colors.text },
@@ -383,7 +390,7 @@ const makeStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet
   addButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, margin: 16, padding: 14, backgroundColor: colors.button, borderRadius: 8 },
   addButtonText: { color: colors.buttonText, fontSize: 14, fontWeight: '500' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 12 },
+  modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 24 + bottomInset, gap: 12 },
   modalTitle: { fontSize: 18, fontWeight: '500', marginBottom: 4, color: colors.text },
   input: { borderWidth: 0.5, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 14, color: colors.text },
   modalButtons: { flexDirection: 'row', gap: 8, marginTop: 8 },
