@@ -149,7 +149,7 @@ export default function Settings() {
             style={styles.row}
             onLongPress={() => deletePlan(plan.id)}>
             <Text style={styles.rowLabel}>{plan.name}</Text>
-            <Text style={styles.rowValue}>{plan.days} days — ₱{plan.cost}</Text>
+            <Text style={styles.rowValue}>{plan.days} days — {plan.cost}</Text>
           </TouchableOpacity>
         ))}
 
@@ -228,7 +228,7 @@ export default function Settings() {
 //=====================================================================================================
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { padding: 20, paddingTop: 60, borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  header: { padding: 20, borderBottomWidth: 0.5, borderBottomColor: colors.border },
   title: { fontSize: 22, fontWeight: '500', color: colors.text },
   section: { marginTop: 24, paddingHorizontal: 16 },
   sectionLabel: { fontSize: 11, fontWeight: '500', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },

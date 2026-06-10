@@ -6,6 +6,7 @@ import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import Toast from 'react-native-toast-message'
 
 //Main Screen yadayadayada, its most of the stuff is inside. treat it like a main function
 //=====================================================================================================
@@ -17,6 +18,7 @@ export default function MembersScreen() {
   const styles = makeStyles(colors, insets.bottom)
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+  const [editSelectedPlanId, setEditSelectedPlanId] = useState<string | null>(null)
 
 
 //======
@@ -76,12 +78,26 @@ const loadPlans = async () => {
 //=====================================================================================================
 const addMember = async () => {
   if (!MemberForm.name.trim()) {
-    Alert.alert('error', 'Name is required!')
+    Toast.show({
+    type: 'error',
+    text1: 'Name is required',
+  })
     return
   }
 
   if (!MemberForm.expiry) {
-    Alert.alert('error', 'Please select a plan!')
+    Toast.show({
+    type: 'error',
+    text1: 'Please select a plan!',
+  })
+    return
+  }
+
+  if (!MemberForm.phone) {
+    Toast.show({
+      type: 'error',
+      text1: 'Please enter a number!'  
+    })
     return
   }
 
@@ -100,6 +116,10 @@ const addMember = async () => {
   saveMembers(updated)
   setMemberForm({name: '', phone: '', expiry: ''})
   setSelectedPlanId(null)
+  Toast.show({
+    type: 'success',
+    text1: 'Member successfully added',
+  })
   setAddModalVisible(false)
 }
 //=====================================================================================================
@@ -115,6 +135,10 @@ const deleteMember = (id: string) => {
         onPress: () => {
           const updated = members.filter((m: Member) => m.id !== id)
           saveMembers(updated)
+          Toast.show({
+            type: 'error',
+            text1: 'Member successfully deleted!',
+          })
           setEditModalVisible(false)
         }
       }
@@ -130,6 +154,8 @@ const deleteMember = (id: string) => {
       expiry: member.expiry
     }) 
 
+    setEditSelectedPlanId(member.planId ?? null)
+
     setEditModalVisible(true)
   }
 
@@ -142,7 +168,10 @@ const deleteMember = (id: string) => {
 
   const updateMember = () => {
     if (!editForm.name.trim()) {
-      Alert.alert('Error', 'Name is required!')
+      Toast.show({
+      type: 'error',
+      text1: ''
+      })
       return
     }
 
@@ -152,6 +181,12 @@ const deleteMember = (id: string) => {
         : m
     )
     saveMembers(updated)
+
+    Toast.show({
+    type: 'success',
+    text1: 'Member updated',
+    })
+
     setEditModalVisible(false)
 }
 
@@ -256,26 +291,44 @@ const deleteMember = (id: string) => {
 
 
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>Select a plan</Text>
-          {plans.map(plan => (
 
-            <TouchableOpacity
-              key={plan.id}
-              style={[styles.input, { 
-                backgroundColor: selectedPlanId === plan.id ? colors.button : 'transparent',
-                marginBottom: 8
-              }]}
-              onPress={() => {
-                setSelectedPlanId(plan.id)
-                const expiry = new Date()
-                expiry.setDate(expiry.getDate() + plan.days)
-                setMemberForm({ ...MemberForm, expiry: expiry.toISOString().split('T')[0] })
-              }}>
-              <Text style={{ color: selectedPlanId === plan.id ? colors.buttonText : colors.text, fontSize: 14 }}>
-                {plan.name} — {plan.days} days — ₱{plan.cost}
-              </Text>
-            </TouchableOpacity>
+          {plans.map(plan => {
+            const isSelected = editSelectedPlanId === plan.id
 
-          ))}
+            return (
+              <TouchableOpacity
+                key={plan.id}
+                style={[
+                  styles.input,
+                  {
+                    marginBottom: 8,
+                    backgroundColor: isSelected ? colors.button : 'transparent',
+                    borderColor: isSelected ? colors.button : colors.border,
+                  }
+                ]}
+                onPress={() => {
+                  setEditSelectedPlanId(plan.id)
+
+                  const expiry = new Date()
+                  expiry.setDate(expiry.getDate() + plan.days)
+
+                  setEditForm({
+                    ...editForm,
+                    expiry: expiry.toISOString().split('T')[0]
+                  })
+                }}
+              >
+                <Text
+                  style={{
+                    color: isSelected ? colors.buttonText : colors.text,
+                    fontSize: 14
+                  }}
+                >
+                  {plan.name} — {plan.days} days — ₱{plan.cost}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
 
           {plans.length === 0 && (
             <Text style={{ fontSize: 13, color: colors.textSecondary }}>
@@ -301,6 +354,7 @@ const deleteMember = (id: string) => {
 
           </View>
         </View>
+        <Toast/>
       </KeyboardAvoidingView>
 
     </Modal>
@@ -345,26 +399,44 @@ const deleteMember = (id: string) => {
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
             Renew with a plan
           </Text>
-          {plans.map(plan => (
-            <TouchableOpacity
-              key={plan.id}
-              style={[styles.input, { marginBottom: 8 }]}
-              onPress={() => {
-                const expiry = new Date()
-                expiry.setDate(expiry.getDate() + plan.days)
-                setEditForm({ ...editForm, expiry: expiry.toISOString().split('T')[0] })
-              }}>
-              <Text style={{ color: colors.text, fontSize: 14 }}>
-                {plan.name} — {plan.days} days — ₱{plan.cost}
-              </Text>
-            </TouchableOpacity>
-          ))}
 
-          {plans.length === 0 && (
-            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-              No plans yet. Add plans in Settings.
-            </Text>
-          )}
+          {plans.map(plan => {
+            const isSelected = editSelectedPlanId === plan.id
+
+            return (
+              <TouchableOpacity
+                key={plan.id}
+                style={[
+                  styles.input,
+                  {
+                    marginBottom: 8,
+                    backgroundColor: isSelected ? colors.button : 'transparent',
+                    borderColor: isSelected ? colors.button : colors.border,
+                  }
+                ]}
+                onPress={() => {
+                  setEditSelectedPlanId(plan.id)
+
+                  const expiry = new Date()
+                  expiry.setDate(expiry.getDate() + plan.days)
+
+                  setEditForm({
+                    ...editForm,
+                    expiry: expiry.toISOString().split('T')[0]
+                  })
+                }}
+              >
+                <Text
+                  style={{
+                    color: isSelected ? colors.buttonText : colors.text,
+                    fontSize: 14
+                  }}
+                >
+                  {plan.name} — {plan.days} days — ₱{plan.cost}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
           
 
           <View style={styles.modalButtons}>
@@ -388,6 +460,7 @@ const deleteMember = (id: string) => {
             </TouchableOpacity>
           </View>
         </View>
+        <Toast/>
       </KeyboardAvoidingView>
     </Modal>
     </SafeAreaView>
@@ -398,7 +471,7 @@ const deleteMember = (id: string) => {
 //=====================================================================================================
 const makeStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { padding: 20, paddingTop: 60, borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  header: { padding: 20, borderBottomWidth: 0.5, borderBottomColor: colors.border },
   title: { fontSize: 22, fontWeight: '500', color: colors.text },
   subtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: 8, padding: 12, backgroundColor: colors.backgroundSecondary },
