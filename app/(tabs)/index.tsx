@@ -1,30 +1,22 @@
 import { IconSymbol } from '@/components/ui/icon-symbol'
 import { useTheme } from '@/context/ThemeContext'
+import { Member, Plan } from '@/types'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import DateTimePicker from '@react-native-community/datetimepicker'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-//Types 
-type Member = {
-  id: string
-  name: string
-  phone: string
-  expiry: string
-}
-
 //Main Screen yadayadayada, its most of the stuff is inside. treat it like a main function
-
+//=====================================================================================================
 export default function MembersScreen() {
 
   const {colors} = useTheme()
   const insets = useSafeAreaInsets()
-  const [showAddDatePicker, setShowAddDatePicker] = useState(false)
-  const [showEditDatePicker, setShowEditDatePicker] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const styles = makeStyles(colors, insets.bottom)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
 
 
 //======
@@ -42,11 +34,13 @@ export default function MembersScreen() {
   useFocusEffect(
   useCallback(() => {
     loadMembers()
+    loadPlans()
   }, [])
 )
 
-//======
+
 //For Edit Modal
+//=====================================================================================================
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -57,6 +51,7 @@ export default function MembersScreen() {
 
 
 //IsMemberActive helper function
+//=====================================================================================================
   const isMemberActive = (expiry: string) => {
     const expiryDate = new Date(expiry)
     return expiryDate >= new Date()
@@ -64,34 +59,50 @@ export default function MembersScreen() {
 
 
 
-//======
+//=====================================================================================================
+
   const loadMembers = async () => {
     const stored = await AsyncStorage.getItem('members')
     if (stored)
       setMembers(JSON.parse(stored))
   }
 
-//======
-  const addMember = async () => {
-    if (!MemberForm.name.trim()) {
-      Alert.alert('error', 'Name is required!')
-      return
-    }
+//=====================================================================================================
+const loadPlans = async () => {
+  const stored = await AsyncStorage.getItem('plans')
+  if (stored) setPlans(JSON.parse(stored))
+}
 
-    const newMember: Member = {
+//=====================================================================================================
+const addMember = async () => {
+  if (!MemberForm.name.trim()) {
+    Alert.alert('error', 'Name is required!')
+    return
+  }
+
+  if (!MemberForm.expiry) {
+    Alert.alert('error', 'Please select a plan!')
+    return
+  }
+
+  const selectedPlan = plans.find(p => p.id === selectedPlanId)
+
+  const newMember: Member = {
     id: Date.now().toString(),
     name: MemberForm.name.trim(),
     phone: MemberForm.phone.trim(),
     expiry: MemberForm.expiry.trim(),
-
-   }
-    const updated = [...members, newMember]
-    saveMembers(updated)
-    setMemberForm({name: '', phone: '', expiry: ''})
-    setAddModalVisible(false)
-
+    planId: selectedPlanId ?? undefined,
+    cost: selectedPlan?.cost ?? undefined,
   }
-//======
+
+  const updated = [...members, newMember]
+  saveMembers(updated)
+  setMemberForm({name: '', phone: '', expiry: ''})
+  setSelectedPlanId(null)
+  setAddModalVisible(false)
+}
+//=====================================================================================================
 const deleteMember = (id: string) => {
   Alert.alert(
     'Delete Member',
@@ -110,7 +121,7 @@ const deleteMember = (id: string) => {
     ]
   )
 }
-//======
+//=====================================================================================================
   const editMember = (member: Member) => {
     setSelectedMember(member)
     setEditForm({
@@ -122,12 +133,12 @@ const deleteMember = (id: string) => {
     setEditModalVisible(true)
   }
 
-//======
+//=====================================================================================================
   const saveMembers = async (updatedMembers: Member[]) => {
     await AsyncStorage.setItem('members', JSON.stringify(updatedMembers))
     setMembers(updatedMembers)
   }
-//======
+//=====================================================================================================
 
   const updateMember = () => {
     if (!editForm.name.trim()) {
@@ -144,11 +155,11 @@ const deleteMember = (id: string) => {
     setEditModalVisible(false)
 }
 
-//======
+//=====================================================================================================
   const filteredMembers = members.filter((m: Member) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
   
 
-//================================================================================
+//=====================================================================================================
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -175,7 +186,7 @@ const deleteMember = (id: string) => {
     onChangeText={setSearchQuery}
   />
 
-  {/*==============================================================================*/}
+{/*==================================================================================================*/}
     <FlatList
       data={filteredMembers}
       keyExtractor={(item) => item.id}
@@ -213,7 +224,9 @@ const deleteMember = (id: string) => {
 
       )}
     />
-  {/*=Modal for Add Member=============================================================*/}
+
+{/*=Modal for Add Member=============================================================*/}
+{/*==================================================================================================*/}
     <Modal
       visible={modalAddVisible}
       animationType="slide"
@@ -242,23 +255,32 @@ const deleteMember = (id: string) => {
           />
 
 
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setShowAddDatePicker(true)}>
-            <Text style={{ color: MemberForm.expiry ? colors.text : colors.textSecondary, fontSize: 14 }}>
-              {MemberForm.expiry || 'Expiry date'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>Select a plan</Text>
+          {plans.map(plan => (
 
-          {showAddDatePicker && (
-            <DateTimePicker
-              value={MemberForm.expiry ? new Date(MemberForm.expiry) : new Date()}
-              mode="date"
-              onChange={(event, date) => {
-                setShowAddDatePicker(false)
-                if (date) setMemberForm({ ...MemberForm, expiry: date.toISOString().split('T')[0] })
-              }}
-            />
+            <TouchableOpacity
+              key={plan.id}
+              style={[styles.input, { 
+                backgroundColor: selectedPlanId === plan.id ? colors.button : 'transparent',
+                marginBottom: 8
+              }]}
+              onPress={() => {
+                setSelectedPlanId(plan.id)
+                const expiry = new Date()
+                expiry.setDate(expiry.getDate() + plan.days)
+                setMemberForm({ ...MemberForm, expiry: expiry.toISOString().split('T')[0] })
+              }}>
+              <Text style={{ color: selectedPlanId === plan.id ? colors.buttonText : colors.text, fontSize: 14 }}>
+                {plan.name} — {plan.days} days — ₱{plan.cost}
+              </Text>
+            </TouchableOpacity>
+
+          ))}
+
+          {plans.length === 0 && (
+            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+              No plans yet. Add plans in Settings.
+            </Text>
           )}
 
 
@@ -288,7 +310,8 @@ const deleteMember = (id: string) => {
       <Text style={styles.addButtonText}>Add member</Text>
     </TouchableOpacity>
 
-    {/*=Modal for Edit Member=============================================================*/}
+{/*=Modal for Edit Member=============================================================*/}
+{/*==================================================================================================*/}
     <Modal
       visible={editModalVisible}
       animationType="slide"
@@ -316,23 +339,31 @@ const deleteMember = (id: string) => {
           />
 
 
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setShowEditDatePicker(true)}>
-            <Text style={{ color: MemberForm.expiry ? colors.text : colors.textSecondary, fontSize: 14 }}>
-              {editForm.expiry || 'Expiry date'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
+            Current expiry: {editForm.expiry}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
+            Renew with a plan
+          </Text>
+          {plans.map(plan => (
+            <TouchableOpacity
+              key={plan.id}
+              style={[styles.input, { marginBottom: 8 }]}
+              onPress={() => {
+                const expiry = new Date()
+                expiry.setDate(expiry.getDate() + plan.days)
+                setEditForm({ ...editForm, expiry: expiry.toISOString().split('T')[0] })
+              }}>
+              <Text style={{ color: colors.text, fontSize: 14 }}>
+                {plan.name} — {plan.days} days — ₱{plan.cost}
+              </Text>
+            </TouchableOpacity>
+          ))}
 
-          {showEditDatePicker && (
-            <DateTimePicker
-              value={editForm.expiry ? new Date(editForm.expiry) : new Date()}
-              mode="date"
-              onChange={(event, date) => {
-                setShowEditDatePicker(false)
-                if (date) setEditForm({ ...editForm, expiry: date.toISOString().split('T')[0] })
-              }}
-            />
+          {plans.length === 0 && (
+            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+              No plans yet. Add plans in Settings.
+            </Text>
           )}
           
 
@@ -364,7 +395,7 @@ const deleteMember = (id: string) => {
 }
 
 
-//================================================================================
+//=====================================================================================================
 const makeStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { padding: 20, paddingTop: 60, borderBottomWidth: 0.5, borderBottomColor: colors.border },
@@ -403,3 +434,4 @@ const makeStyles = (colors: ReturnType<typeof useTheme>['colors'], bottomInset: 
   emptySubtitle: { fontSize: 13, color: colors.border, textAlign: 'center' },
   searchInput: { margin: 12, padding: 12, borderRadius: 8, borderWidth: 0.5, borderColor: colors.border, fontSize: 14, color: colors.text },
 })
+//=====================================================================================================
